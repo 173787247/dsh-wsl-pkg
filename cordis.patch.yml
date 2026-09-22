@@ -1,0 +1,7 @@
+- insert:
+    - id: dsh-wsl-pkg
+      name: dsh-wsl-pkg
+      config:
+        enabled: true
+        timeoutMs: 60000
+        allowRoots: []
