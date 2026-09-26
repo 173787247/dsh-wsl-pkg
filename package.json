@@ -1,6 +1,6 @@
 {
   "name": "dsh-wsl-pkg",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness WSL plugin: npm/pip/cargo dependency tree summaries.",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/173787247/dsh-wsl-pkg.git" },

@@ -1,4 +1,4 @@
-import { pkgStatus, npmLs, pipList, cargoTree } from "./lib/pkg.js";
+import { pkgStatus, npmLs, pipList, cargoTree, npmOutdated } from "./lib/pkg.js";
 
 export const name = "dsh-wsl-pkg";
 export const inject = ["tools", "systemPrompt"];
@@ -14,21 +14,59 @@ export function apply(ctx, config = {}) {
   ctx.systemPrompt.section({
     name: "tool:pkg",
     order: 141,
-    text: "dsh-wsl-pkg summarizes dependency trees (npm ls / pip list / cargo tree). Prefer shallow depth. Does not install/uninstall packages.",
+    text: "dsh-wsl-pkg summarizes dependency trees (npm ls / npm outdated / pip list / cargo tree). Prefer shallow depth. Does not install/uninstall packages.",
   });
 
   ctx.tools.register({
     name: "pkg_status",
-    description: "Whether npm / pip / cargo are on PATH.",
+    description: "Whether npm / pip / cargo are on PATH; npm version.",
     parameters: { type: "object", additionalProperties: false, properties: {} },
-    output: { schema: { type: "object", additionalProperties: true }, render: (_a, v) => [{ type: "text", text: JSON.stringify(v) }] },
-    timeoutMs: 5_000,
+    output: { schema: { type: "object", additionalProperties: true }, render: (_a, v) => [{ type: "text", text: JSON.stringify(v, null, 2) }] },
+    timeoutMs: 8_000,
     isConcurrencySafe: () => true,
     async execute() {
       return pkgStatus();
     },
     presentCall: () => ({ card: "generic", title: "pkg status" }),
     presentResult: (_a, r) => ({ card: "generic", title: "pkg status", content: r.content }),
+  });
+
+  ctx.tools.register({
+    name: "pkg_npm_outdated",
+    description: "npm outdated --json summary for a project dir (read-only; does not upgrade).",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      required: ["dir"],
+      properties: { dir: { type: "string" } },
+    },
+    output: {
+      schema: { type: "object", additionalProperties: true },
+      render: (_a, v) => [
+        {
+          type: "text",
+          text:
+            v.ok === false
+              ? v.error
+              : (v.packages || [])
+                  .map((p) => `${p.name}\tcurrent=${p.current}\twanted=${p.wanted}\tlatest=${p.latest}`)
+                  .join("\n") ||
+                v.output ||
+                "(none outdated)",
+        },
+      ],
+    },
+    timeoutMs,
+    isConcurrencySafe: () => true,
+    async execute(args) {
+      try {
+        return await npmOutdated({ dir: args.dir, allowRoots, timeoutMs });
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      }
+    },
+    presentCall: () => ({ card: "generic", title: "npm outdated" }),
+    presentResult: (_a, r) => ({ card: "generic", title: "npm outdated", content: r.content }),
   });
 
   ctx.tools.register({
